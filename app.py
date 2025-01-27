@@ -1,71 +1,48 @@
-import os
-from flask import Flask, request, jsonify
+from flask import Flask, request
 from flask_cors import CORS
 import requests
+import os
+from dotenv import load_dotenv
 
-app = Flask(__name__)
+app = Flask( __name__) 
+CORS(app)
+#@app.get("/")
+#def index_get():
+ #   return render_template("base.html")
 
-# Enable CORS for all routes (replace "*" with your frontend domain in production)
-CORS(app, origins=["*"])
+AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
+AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
+AIRTABLE_TABLE_NAME = "issues"
+endpoint = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}"
 
-# Load environment variables
-AIRTABLE_PAT = os.getenv('AIRTABLE_PAT')          # Personal Access Token
-AIRTABLE_BASE_ID = os.getenv('AIRTABLE_BASE_ID')  # Airtable Base ID
-AIRTABLE_TABLE_NAME = 'issues'                    # Airtable Table Name
-
-@app.route('/report-issue', methods=['POST'])
-def report_issue():
-    try:
-        # Get JSON data from the request
-        data = request.json
-        app.logger.info(f"Received data: {data}")  # Log incoming data
-
-        if not data:
-            return jsonify({'message': 'No data provided'}), 400
-            
-        username = data.get('username')
-        email = data.get('email')
-        issue = data.get('issue')
-
-        # Validate required fields
-        if not username:
-            return jsonify({'message': 'Missing username'}), 400
-        if not email:
-            return jsonify({'message': 'Missing email'}), 400
-        if not issue:
-            return jsonify({'message': 'Missing issue'}), 400
-
-        # Prepare payload for Airtable
-        url = f'https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}'
-        headers = {
-            'Authorization': f'Bearer {AIRTABLE_PAT}',
-            'Content-Type': 'application/json'
+headers = {
+"Authorization": f"Bearer {AIRTABLE_API_KEY}",
+"Content-Type": "application/json"
+}
+def save_rec(username, email, issue):
+    data = {
+  "records": [
+          {
+        "fields": {
+            "Username": f"{username}",
+            "Email": f"{email}",
+            "Issue": f"{issue}"
         }
-        payload = {
-            'fields': {
-                'Username': username,
-                'Email': email,
-                'Issue': issue
-            }
-        }
+        },
+    ]
+    }
 
-        # Send data to Airtable
-        response = requests.post(url, headers=headers, json=payload)
-        response.raise_for_status()  # Raise exception for HTTP errors
+    r = requests.post(endpoint, json=data , headers=headers)
+    r.json()
 
-        return jsonify({'message': 'Issue reported successfully!'}), 200
 
-    except requests.exceptions.RequestException as e:
-        print(f"Error sending data to Airtable: {e}")
-        return jsonify({'message': 'Failed to communicate with Airtable'}), 500
+@app.post("/issue")
+def predict():
+    username = request.get_json().get("username")
+    email = request.get_json().get("email")
+    issue = request.get_json().get("issue")
+    save_rec(username,email,issue)
 
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        return jsonify({'message': 'An unexpected error occurred'}), 500
 
-@app.route('/health', methods=['GET'])
-def health_check():
-    return jsonify({'status': 'healthy'}), 200
-
-if __name__ == '__main__':
+if   __name__ == "__main__" : 
     app.run(debug=True)
