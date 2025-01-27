@@ -18,13 +18,22 @@ def report_issue():
     try:
         # Get JSON data from the request
         data = request.json
+        app.logger.info(f"Received data: {data}")  # Log incoming data
+
+        if not data:
+            return jsonify({'message': 'No data provided'}), 400
+            
         username = data.get('username')
         email = data.get('email')
         issue = data.get('issue')
 
         # Validate required fields
-        if not username or not email or not issue:
-            return jsonify({'message': 'Missing required fields'}), 400
+        if not username:
+            return jsonify({'message': 'Missing username'}), 400
+        if not email:
+            return jsonify({'message': 'Missing email'}), 400
+        if not issue:
+            return jsonify({'message': 'Missing issue'}), 400
 
         # Prepare payload for Airtable
         url = f'https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}'
